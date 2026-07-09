@@ -32,19 +32,26 @@ const { values: cliArgs } = parseArgs({
   options: {
     port:     { type: "string", short: "p" },
     hostname: { type: "string", short: "H" },
+    open:     { type: "boolean", default: true },
+    "no-open": { type: "boolean", default: false },
+    dev:      { type: "boolean", default: false },
   },
   strict: false,
+  allowPositionals: true,
 });
 
 const port     = cliArgs.port     ?? process.env.PORT     ?? "30141";
-const hostname = cliArgs.hostname ?? process.env.HOSTNAME ?? null;
+const hostname = cliArgs.hostname ?? process.env.PI_WEB_HOSTNAME ?? process.env.HOSTNAME ?? null;
+const shouldOpenBrowser = cliArgs.open !== false && cliArgs.open !== "false" && cliArgs["no-open"] !== true;
+const isDev = cliArgs.dev === true;
+const isTermux = Boolean(process.env.TERMUX_VERSION || process.env.PREFIX?.includes("/com.termux/"));
 
-if (!fs.existsSync(nextDir)) {
-  console.error("Build artifacts not found. Please report this issue.");
+if (!isDev && !fs.existsSync(nextDir)) {
+  console.error("Build artifacts not found. Run `pi-web --dev` from a source checkout, or install the published package.");
   process.exit(1);
 }
 
-const nextArgs = ["start", "-p", port];
+const nextArgs = [isDev ? "dev" : "start", "-p", port];
 if (hostname) nextArgs.push("-H", hostname);
 
 // Always run next's JS entry with node directly — avoids .bin symlink issues
@@ -56,27 +63,43 @@ const child = spawn(process.execPath, [nextBin, ...nextArgs], {
 });
 
 let browserOpened = false;
-const url = `http://${hostname ?? "localhost"}:${port}`;
+const displayHost = hostname === "0.0.0.0" || hostname === "::" ? "127.0.0.1" : (hostname ?? "localhost");
+const url = `http://${displayHost}:${port}`;
+
+function openBrowser(url) {
+  if (isTermux) {
+    // Termux:API provides termux-open-url; Android's am command is the fallback.
+    const opener = spawn("sh", ["-c", "command -v termux-open-url >/dev/null 2>&1 && termux-open-url \"$1\" || am start -a android.intent.action.VIEW -d \"$1\" >/dev/null", "sh", url], {
+      stdio: "ignore",
+      detached: true,
+    });
+    opener.on("error", (error) => console.warn(`Could not open browser automatically: ${error.message}`));
+    opener.unref();
+    return;
+  }
+
+  const isWindows = process.platform === "win32";
+  const isMac = process.platform === "darwin";
+  const openCmd = isWindows ? "start" : isMac ? "open" : "xdg-open";
+  const opener = spawn(openCmd, [url], {
+    shell: isWindows,
+    stdio: "ignore",
+    detached: true,
+  });
+
+  opener.on("error", (error) => {
+    console.warn(`Could not open browser automatically: ${error.message}`);
+  });
+
+  opener.unref();
+}
 
 child.stdout.on("data", (chunk) => {
   const text = chunk.toString();
   process.stdout.write(text);
-  if (!browserOpened && text.includes("Ready")) {
+  if (shouldOpenBrowser && !browserOpened && text.includes("Ready")) {
     browserOpened = true;
-    const isWindows = process.platform === "win32";
-    const isMac = process.platform === "darwin";
-    const openCmd = isWindows ? "start" : isMac ? "open" : "xdg-open";
-    const opener = spawn(openCmd, [url], {
-      shell: isWindows,
-      stdio: "ignore",
-      detached: true,
-    });
-
-    opener.on("error", (error) => {
-      console.warn(`Could not open browser automatically: ${error.message}`);
-    });
-
-    opener.unref();
+    openBrowser(url);
   }
 });
 

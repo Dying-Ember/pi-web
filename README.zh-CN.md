@@ -27,9 +27,30 @@ pi-web
 pi-web --port 8080              # 自定义端口
 pi-web --hostname 127.0.0.1     # 仅本机访问
 pi-web -p 8080 -H 127.0.0.1     # 组合使用
+pi-web --no-open                # 不自动打开浏览器
 
 PORT=8080 pi-web                # 也支持环境变量
 ```
+
+**Android Termux：**
+
+```bash
+pkg update
+pkg install nodejs git
+npm install -g @agegr/pi-web
+pi-web --hostname 127.0.0.1
+```
+
+从源码运行：
+
+```bash
+git clone https://github.com/agegr/pi-web.git
+cd pi-web
+npm install
+node bin/pi-web.js --dev --hostname 127.0.0.1
+```
+
+然后在手机 Chrome 打开 [http://127.0.0.1:30141](http://127.0.0.1:30141)。在 Termux 里，`pi-web` 会优先用 `termux-open-url` 打开浏览器；如果没装 Termux:API，就退回 Android 自带的 `am start`。
 
 ## 功能介绍
 

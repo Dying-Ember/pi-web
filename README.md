@@ -31,9 +31,30 @@ Then open [http://localhost:30141](http://localhost:30141). The CLI will try to 
 pi-web --port 8080              # custom port
 pi-web --hostname 127.0.0.1     # local access only
 pi-web -p 8080 -H 127.0.0.1     # combine options
+pi-web --no-open                # do not open a browser automatically
 
 PORT=8080 pi-web                # environment variable is also supported
 ```
+
+**Android Termux:**
+
+```bash
+pkg update
+pkg install nodejs git
+npm install -g @agegr/pi-web
+pi-web --hostname 127.0.0.1
+```
+
+From a source checkout:
+
+```bash
+git clone https://github.com/agegr/pi-web.git
+cd pi-web
+npm install
+node bin/pi-web.js --dev --hostname 127.0.0.1
+```
+
+Then open Chrome at [http://127.0.0.1:30141](http://127.0.0.1:30141). In Termux, `pi-web` tries to open the URL with `termux-open-url` when Termux:API is installed, otherwise with Android's built-in `am start` command.
 
 ## Features
 
