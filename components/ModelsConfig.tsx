@@ -1297,8 +1297,10 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
   }, []);
 
   useEffect(() => {
-    fetch("/api/models-config")
-      .then((r) => r.json())
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    fetch("/api/models-config", { signal: controller.signal })
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((d: ModelsJson) => {
         const normalized = d.providers ? d : { ...d, providers: {} };
         setConfig(normalized);
@@ -1306,9 +1308,16 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
         if (keys.length > 0) setSelection({ type: "provider", name: keys[0] });
       })
       .catch(() => setConfig({ providers: {} }))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
     loadOAuthProviders();
     loadApiKeyProviders();
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, [loadOAuthProviders, loadApiKeyProviders]);
 
   const addCustomProvider = useCallback(() => {

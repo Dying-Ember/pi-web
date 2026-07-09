@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { homedir } from "os";
 
 export const dynamic = "force-dynamic";
 
 function getModelsPath(): string {
-  return join(getAgentDir(), "models.json");
+  const agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
+  return join(agentDir, "models.json");
 }
 
 function readModelsJson(): Record<string, unknown> {
@@ -27,7 +28,11 @@ function writeModelsJson(data: Record<string, unknown>): void {
 }
 
 export async function GET() {
-  return NextResponse.json(readModelsJson());
+  try {
+    return NextResponse.json(readModelsJson());
+  } catch (error) {
+    return NextResponse.json({ providers: {}, error: String(error) }, { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {
