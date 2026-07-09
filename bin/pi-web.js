@@ -52,6 +52,7 @@ if (!isDev && !fs.existsSync(nextDir)) {
 }
 
 const nextArgs = [isDev ? "dev" : "start", "-p", port];
+if (isDev) nextArgs.push("--webpack");
 if (hostname) nextArgs.push("-H", hostname);
 
 // Always run next's JS entry with node directly — avoids .bin symlink issues
